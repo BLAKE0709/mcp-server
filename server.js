@@ -134,6 +134,48 @@ app.get("/sse", (req, res) => {
 });
 
 /**
+ * Server-Sent Events endpoint on the root path.
+ *
+ * Some hosting providers (including Render) may route the root path of
+ * a service to the first defined route instead of the intended path. In
+ * production we expect ChatGPT to connect to `/sse`, but if a GET
+ * request arrives at `/` we stream the same tool definitions. This
+ * duplication ensures the server continues to work even when path
+ * rewriting occurs at the platform level.
+ */
+app.get("/", (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  res.flushHeaders();
+  const tools = {
+    listRepos: {
+      description: "List the authenticated user's GitHub repositories",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+    getUser: {
+      description: "Get the authenticated user's GitHub profile information",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  };
+  const payload = {
+    message: "GitHub tools ready",
+    tools,
+  };
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+});
+
+/**
  * Tool invocation: listRepos
  *
  * Returns an array of repositories for the authenticated user. This
